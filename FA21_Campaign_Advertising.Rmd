@@ -1,0 +1,481 @@
+---
+title: "FA21 Agency Campaign Vendor Reports"
+author: "Office of Marketing and Brand Management"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = FALSE,
+	message = FALSE,
+	warning = FALSE,
+	fig.width=8, 
+	fig.height=1.5
+)
+```
+
+```{r}
+source("C:/Users/christine.iyer/Box/R_Source_Functions/Plot_Table_Functions.R")
+```
+
+
+
+```{r fig.height=2, fig.width=4}
+library(knitr)
+library(janitor)
+library(tidyr)
+library(zoo)
+library(lubridate)
+library(hms)
+library(dplyr)
+library(ggplot2)
+library(gtable)
+library(grid)
+library(ggpubr)
+library(kableExtra)
+library(scales)
+library(pander)
+```
+
+
+
+```{r}
+FM <- read.csv("file:///Z:/DAA/Marketing/MKT_output.csv", header = T, stringsAsFactors = F)
+#FM <- read.csv("C:/Users/christine.iyer/Box/AnnualCampaignVendorPerformance/MKT_output.csv", header = T, stringsAsFactors = F)
+```
+
+
+
+```{r}
+FM <- FM %>% filter(Master_Adname_Type == "NC" & grepl("21", Code_RecruitingPeriod))
+FM <- FM %>% mutate(Code_Audience = ifelse(Master_Adname == "FA20_BR_FB_VID__TL_UG_D_1",  "TL", Code_Audience ), Code_Product = ifelse(Master_Adname == "FA20_BR_FB_VID__TL_UG_D_1",  "UG", Code_Product), Master_Results = as.numeric(Master_Results))
+FM <- FM %>% select(1:8, 13, 15:19, 21:24, 26, 28:29, 31:39, 41) %>% select(Master_Date, everything())
+
+```
+
+```{r}
+FM <- FM %>% mutate_at(10:31, ~replace(., is.na(.), 0)) %>% mutate(Master_Date = as.Date(Master_Date, format = "%Y-%m-%d")) %>% arrange(Master_Date)
+colorP <- c("#F6A704", "#0E1033","#4E7B14","#A92007","#D47E0A")
+FMVM <- FM %>%
+  mutate(Product_Audience = paste0(Code_Product, "_", Code_Audience)) %>%
+  group_by(Code_Audience,Code_Product, Code_Vendor, Code_Medium,Week = as.Date(cut(Master_Date + 1, "week")), format = "%Y-%m-%d") %>%
+  summarise(
+    Cost = sum(Master_Cost),
+    Clicks = sum(Master_Clicks),
+    Impressions = round(sum(Master_Impressions),0),
+    #CTR = paste0(round(Clicks/Impressions * 100, 2), "%"),
+    Bounces = sum(Master_Bounces),
+    Sessions = sum(Master_Sessions),
+    UPV = sum(Master_Unique_Pageviews),
+    Views = sum(Master_Views),
+    Completions = sum(Master_Completions),
+    #BounceRate = paste0(round(Bounces/Sessions * 100, 2), "%"),
+    Step1 = sum(Master_Time_On_Page)/(sum(Master_Pageviews)- sum(Master_Exits)),
+    Av_TOP = round_hms(as_hms(Step1), 5),
+    ClickRatePct = round(Clicks/Impressions * 100, 2),
+    BounceRatePct = round(Bounces/Sessions * 100, 2),
+    ViewRate = round(Views/Impressions * 100, 2),
+    VTR = round(Completions/Impressions *100, 2),
+    ClickableCompletions = sum(Master_Clickable_Completions),
+    ClickableCompRate = round(Clicks/ClickableCompletions * 100, 2), 
+    Swipes = sum(Master_Swipes), 
+    SwipeUpRatePct = round(Swipes/Impressions * 100, 2),
+    Opens = sum(Master_Clicks_To_Site),
+    CTOR = round(Opens/Clicks * 100, 2), 
+    Sends = sum(Master_Sends), 
+    LIOpens = sum(Master_Opens),
+    LIClicks = sum(Master_Clicks_Sponsored_InMail),
+    OpenRate = round(LIOpens/Sends * 100, 2), 
+    Engagements = sum(Master_Engagements),
+    Results = sum(Master_Results),
+    ResultsRate = round(Results/Impressions * 100, 2),
+    EngagementRate = round(Engagements/Impressions * 100, 2),
+    EngRate = round((sum(LIOpens)+sum(Engagements))/sum(Sends)*100, 2),  
+    LICTOR = round(sum(LIClicks)/sum(LIOpens) * 100, 2)) %>%
+  select(Week, Impressions, Clicks, Bounces, Sessions, Swipes, ClickRatePct, SwipeUpRatePct, UPV, BounceRatePct, Av_TOP, ClickableCompRate, VTR, CTOR,OpenRate, Sends, ViewRate, ClickableCompletions, Completions, Opens, LIOpens, LIClicks, Engagements, LICTOR, EngRate, EngagementRate, Views, Completions, Results, ResultsRate)
+
+
+```
+
+### Undergraduate
+
+**Facebook Display**
+
+```{r pressure, echo=FALSE}
+IGD <- FMVM %>% 
+  filter(Code_Vendor == "FB" &
+           Code_Medium == "DISP"  &
+           Code_Audience == "HS" &
+           Week >= min(Week) & 
+           Week <= max(Week)) 
+ytd(min(IGD$Week),max(IGD$Week))
+FB_DISP_PLT(a)
+FB_DISP_TBL(TD)
+```
+
+---
+
+**Facebook Video**
+
+```{r echo=FALSE}
+IGD <- FMVM %>% 
+  filter(Code_Vendor == "FB" &
+           Code_Medium == "VID"  &
+           Code_Audience == "HS" &
+           Week >= min(Week) & 
+           Week <= max(Week)) 
+ytd(min(IGD$Week),max(IGD$Week))
+FB_VID_PLT(a)
+FB_VID_TBL(TD)
+```
+
+---
+
+**Instagram Display**
+
+```{r}
+IGD <- FMVM %>% 
+  filter(Code_Vendor == "IG" &
+           Code_Medium == "DISP"  &
+           Code_Audience == "HS" &
+           Week >= min(Week) & 
+           Week <= max(Week)) 
+ytd(min(IGD$Week),max(IGD$Week))
+IG_DISP_PLT(a)
+IG_DISP_TBL(TD)
+```
+
+---
+
+**Instagram Video**
+
+```{r}
+IGD <- FMVM %>% 
+  filter(Code_Vendor == "IG" &
+           Code_Medium == "VID"  &
+           Code_Audience == "HS" &
+           Week >= min(Week) & 
+           Week <= max(Week)) 
+ytd(min(IGD$Week),max(IGD$Week))
+IG_VID_PLT(a)
+IG_VID_TBL(TD)
+```
+
+---
+
+**Instagram Stories**
+
+```{r}
+IGD <- FMVM %>% 
+  filter(Code_Vendor == "IG" &
+           Code_Medium == "ST"  &
+           Code_Audience == "HS" &
+           Week >= min(Week) & 
+           Week <= max(Week)) 
+ytd(min(IGD$Week),max(IGD$Week))
+IG_VID_PLT(a)
+IG_VID_TBL(TD)
+```
+
+---
+
+**Programmatic Display**
+
+```{r}
+IGD <- FMVM %>% 
+  filter(Code_Vendor == "DBM" &
+           Code_Medium == "DISP"  &
+           Code_Audience == "HS" &
+           Week >= min(Week) & 
+           Week <= max(Week)) 
+ytd(min(IGD$Week),max(IGD$Week))
+DBM_DISP_PLT(a)
+DBM_DISP_TBL(TD)
+```
+
+---
+
+**Pinterest Display**
+
+```{r}
+IGD <- FMVM %>% 
+  filter(Code_Vendor == "PIN" &
+           Code_Medium == "DISP"  &
+           Code_Audience == "IN" &
+           Week >= min(Week) & 
+           Week <= max(Week)) 
+ytd(min(IGD$Week),max(IGD$Week))
+PIN_DISP_PLT(a)
+PIN_DISP_TBL(TD)
+
+```
+
+---
+
+**Pinterest Video**
+
+```{r}
+IGD <- FMVM %>% 
+  filter(Code_Vendor == "PIN" &
+           Code_Medium == "VID"  &
+           Code_Audience == "IN" &
+           Week >= min(Week) & 
+           Week <= max(Week)) 
+ytd(min(IGD$Week),max(IGD$Week))
+PIN_DISP_PLT(a)
+PIN_DISP_TBL(TD)
+
+```
+
+---
+
+**Snapchat Video**
+
+```{r}
+IGD <- FMVM %>% 
+  filter(Code_Vendor == "SC" &
+           Code_Medium == "VID"  &
+           Code_Audience == "HS" &
+           Week >= min(Week) & 
+           Week <= max(Week)) 
+ytd(min(IGD$Week),max(IGD$Week))
+SC_VID_PLT(a)
+SC_VID_TBL(TD)
+
+```
+
+---
+
+### Transfer
+
+**Programmatic Display**
+
+```{r}
+IGD <- FMVM %>% 
+  filter(Code_Vendor == "DBM" &
+           Code_Medium == "DISP"  &
+           Code_Audience == "CU" &
+           Week >= min(Week) & 
+           Week <= max(Week)) 
+ytd(min(IGD$Week),max(IGD$Week))
+DBM_DISP_PLT(a)
+DBM_DISP_TBL(TD)
+```
+
+
+**Facebook Video**
+
+```{r echo=FALSE}
+IGD <- FMVM %>% 
+  filter(Code_Vendor == "FB" &
+           Code_Medium == "VID"  &
+           Code_Audience == "CU" &
+           Week >= min(Week) & 
+           Week <= max(Week)) 
+ytd(min(IGD$Week),max(IGD$Week))
+FB_VID_PLT(a)
+FB_VID_TBL(TD)
+```
+
+---
+
+**Instagram Video**
+
+```{r}
+IGD <- FMVM %>% 
+  filter(Code_Vendor == "IG" &
+           Code_Medium == "VID"  &
+           Code_Audience == "CU" &
+           Week >= min(Week) & 
+           Week <= max(Week)) 
+ytd(min(IGD$Week),max(IGD$Week))
+IG_VID_PLT(a)
+IG_VID_TBL(TD)
+```
+
+---
+
+**Instagram Stories**
+
+```{r}
+IGD <- FMVM %>% 
+  filter(Code_Vendor == "IG" &
+           Code_Medium == "ST"  &
+           Code_Audience == "CU" &
+           Week >= min(Week) & 
+           Week <= max(Week)) 
+ytd(min(IGD$Week),max(IGD$Week))
+IG_VID_PLT(a)
+IG_VID_TBL(TD)
+```
+
+---
+
+
+**Snapchat Video**
+
+```{r}
+IGD <- FMVM %>% 
+  filter(Code_Vendor == "SC" &
+           Code_Medium == "VID"  &
+           Code_Audience == "CU" &
+           Week >= min(Week) & 
+           Week <= max(Week)) 
+ytd(min(IGD$Week),max(IGD$Week))
+SC_VID_PLT(a)
+SC_VID_TBL(TD)
+```
+
+---
+
+### Degree Completion
+
+**Programmatic Display**
+
+```{r}
+IGD <- FMVM %>% 
+  filter(Code_Vendor == "DBM" &
+           Code_Medium == "DISP"  &
+           Code_Product == "DC" &
+           Week >= min(Week) & 
+           Week <= max(Week)) 
+ytd(min(IGD$Week),max(IGD$Week))
+DBM_DISP_PLT(a)
+DBM_DISP_TBL(TD)
+```
+
+---
+
+**Facebook Video**
+
+```{r echo=FALSE}
+IGD <- FMVM %>% 
+  filter(Code_Vendor == "FB" &
+           Code_Medium == "VID"  &
+           Code_Product == "DC" &
+           Week >= min(Week) & 
+           Week <= max(Week)) 
+ytd(min(IGD$Week),max(IGD$Week))
+FB_VID_PLT(a)
+FB_VID_TBL(TD)
+```
+
+---
+
+**Instagram Video**
+
+```{r}
+IGD <- FMVM %>% 
+  filter(Code_Vendor == "IG" &
+           Code_Medium == "VID"  &
+           Code_Product == "DC" &
+           Week >= min(Week) & 
+           Week <= max(Week)) 
+ytd(min(IGD$Week),max(IGD$Week))
+IG_VID_PLT(a)
+IG_VID_TBL(TD)
+```
+
+---
+
+**Gmail InBox**
+
+```{r echo=FALSE}
+IGD <- FMVM %>% 
+  filter(Code_Vendor == "GM" &
+           Code_Medium == "TEXT"  &
+           Code_Product == "DC" &
+           Week >= min(Week) & 
+           Week <= max(Week)) 
+ytd(min(IGD$Week),max(IGD$Week))
+GM_DISP_PLT(a)
+GM_DISP_TBL(TD)
+```
+
+---
+
+**LinkedIn Sponsored InMail**
+
+```{r}
+IGD <- FMVM %>% 
+  filter(Code_Vendor == "LI" &
+           Code_Medium == "TEXT"  &
+           Code_Product == "DC" &
+           Week >= min(Week) & 
+           Week <= max(Week)) 
+ytd(min(IGD$Week),max(IGD$Week))
+LI_TEXT_PLT(a)
+LI_TEXT_TBL(TD)
+```
+
+---
+
+### Graduate
+
+**Programmatic Display**
+
+```{r}
+IGD <- FMVM %>% 
+  filter(Code_Vendor == "DBM" &
+           Code_Medium == "DISP"  &
+           Code_Product == "GR" &
+           Week >= min(Week) & 
+           Week <= max(Week)) 
+ytd(min(IGD$Week),max(IGD$Week))
+DBM_DISP_PLT(a)
+DBM_DISP_TBL(TD)
+```
+
+---
+
+**Facebook Video**
+
+```{r echo=FALSE}
+IGD <- FMVM %>% 
+  filter(Code_Vendor == "FB" &
+           Code_Medium == "VID"  &
+           Code_Product == "GR" &
+           Week >= min(Week) & 
+           Week <= max(Week)) 
+ytd(min(IGD$Week),max(IGD$Week))
+FB_VID_PLT(a)
+FB_VID_TBL(TD)
+```
+
+---
+
+**Instagram Video**
+
+```{r}
+IGD <- FMVM %>% 
+  filter(Code_Vendor == "IG" &
+           Code_Medium == "VID"  &
+           Code_Product == "GR" &
+           Week >= min(Week) & 
+           Week <= max(Week)) 
+ytd(min(IGD$Week),max(IGD$Week))
+IG_VID_PLT(a)
+IG_VID_TBL(TD)
+```
+
+
+---
+
+**LinkedIn Sponsored InMail**
+
+```{r}
+IGD <- FMVM %>% 
+  filter(Code_Vendor == "LI" &
+           Code_Medium == "TEXT"  &
+           Code_Product == "GR" &
+           Week >= min(Week) & 
+           Week <= max(Week)) 
+ytd(min(IGD$Week),max(IGD$Week))
+LI_TEXT_PLT(a)
+LI_TEXT_TBL(TD)
+```
+
